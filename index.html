@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post-2030 Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+  :root{
+    --paper:#ffffff; --paper-alt:#f7f6f3;
+    --ink:#16202b; --ink-soft:#4a5561;
+    --muted:#767f89; --muted-dim:#9aa2ab;
+    --line:#e2e0da; --line-strong:#c9c6bd;
+    --blue:#1f5c96; --blue-dim:#154573;
+    --orange:#c85a1e;
+    --positive:#2f7d5c; --negative:#b23b2e; --neutral-c:#8b8163;
+    --radius:6px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Source Sans 3',sans-serif; line-height:1.55;
+    padding:0 0 4rem;
+  }
+  .serif{font-family:'Source Serif 4',Georgia,serif;}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px;}
+
+  header.masthead{
+    border-bottom:2px solid var(--ink); padding:22px 0 16px; margin-bottom:32px;
+  }
+  .masthead-row{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:12px;}
+  .brand-name{font-family:'Source Serif 4',Georgia,serif; font-weight:600; font-size:18px; color:var(--ink); letter-spacing:0.01em;}
+  .brand-sub{font-size:11px; color:var(--muted); letter-spacing:0.05em; text-transform:uppercase; margin-top:3px;}
+  .status{font-size:12px; color:var(--muted); text-align:right;}
+  .status span{color:var(--blue); font-weight:600;}
+
+  h1{font-family:'Source Serif 4',Georgia,serif; font-size:30px; font-weight:600; margin:0 0 8px; color:var(--ink);}
+  .lede{color:var(--ink-soft); font-size:15px; max-width:660px; margin:0 0 30px;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-bottom:36px; background:var(--line); border:1px solid var(--line);}
+  .kpi{background:var(--paper); padding:16px 18px;}
+  .kpi-label{font-size:11px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); margin-bottom:8px;}
+  .kpi-value{font-family:'Source Serif 4',Georgia,serif; font-weight:600; font-size:26px; color:var(--ink);}
+
+  .panel-grid{display:grid; grid-template-columns:1.4fr 1fr; gap:1px; margin-bottom:1px; background:var(--line);}
+  .panel{background:var(--paper); border:1px solid var(--line); padding:20px;}
+  .panel-title{font-size:11px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); margin:0 0 16px; font-weight:600;}
+  .chart-wrap{position:relative; width:100%;}
+  .dw-embed{width:100%;}
+  .dw-embed iframe{display:block;}
+
+  .bar-row{display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px;}
+  .bar-label{width:120px; flex-shrink:0; color:var(--ink-soft); font-size:12px;}
+  .bar-track{flex:1; height:6px; background:var(--paper-alt); border:1px solid var(--line);}
+  .bar-fill{height:100%; background:var(--blue);}
+  .bar-count{width:24px; text-align:right; color:var(--muted); font-size:12px;}
+
+  .filter-group{margin-bottom:18px;}
+  .filter-group-title{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; margin-bottom:9px;}
+  .filter-check{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; cursor:pointer;}
+  .filter-check input{margin:0; cursor:pointer; accent-color:var(--blue);}
+  .filter-check .fc-label{flex:1;}
+  .filter-check .fc-count{color:var(--muted); font-size:11px;}
+
+  .tracker-section{display:grid; grid-template-columns:240px 1fr; gap:1px; margin-bottom:1px; background:var(--line); border:1px solid var(--line);}
+  .sidebar{background:var(--paper); padding:20px;}
+  .sidebar-header{display:flex; justify-content:space-between; align-items:baseline; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .reset-link{font-size:11px; font-weight:400; color:var(--blue); text-decoration:none; cursor:pointer;}
+  .reset-link:hover{text-decoration:underline;}
+  .sidebar-list{border-top:1px solid var(--line); padding-top:14px; margin-top:2px; max-height:440px; overflow-y:auto;}
+  .sidebar-region-group{margin-bottom:16px;}
+  .sidebar-region-group:last-child{margin-bottom:0;}
+  .sidebar-region-title{font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:600; margin-bottom:7px;}
+  .sidebar-title-item{display:flex; align-items:baseline; gap:7px; font-size:13px; color:var(--ink-soft); padding:5px 0; border-bottom:1px solid var(--paper-alt); line-height:1.4;}
+  .title-link{color:var(--ink-soft); text-decoration:none;}
+  .title-link:hover{color:var(--blue); text-decoration:underline;}
+  .link-arrow{display:inline-block; font-size:11px; color:var(--muted-dim); transform:translateY(-1px);}
+  .title-link:hover .link-arrow{color:var(--blue);}
+  .sidebar-title-item .signal{margin-top:5px; flex-shrink:0;}
+  .map-pane{background:var(--paper); padding:20px;}
+  .map-wrap{position:relative;}
+  .map-controls{position:absolute; top:8px; right:8px; display:flex; flex-direction:column; gap:4px; z-index:10;}
+  .map-controls button{
+    width:26px; height:26px; border:1px solid var(--line-strong); background:var(--paper); color:var(--ink-soft);
+    border-radius:3px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center;
+  }
+  .map-controls button:hover{background:var(--paper-alt); border-color:var(--blue);}
+  #regionMap svg{cursor:grab;}
+  #regionMap svg:active{cursor:grabbing;}
+  input#search{
+    background:var(--paper); border:1px solid var(--line-strong); color:var(--ink);
+    padding:8px 13px; border-radius:3px; font-size:13px; width:220px; font-family:'Source Sans 3',sans-serif;
+  }
+  input#search::placeholder{color:var(--muted-dim);}
+
+  .empty{color:var(--muted); font-size:13px; padding:24px; text-align:center;}
+  .config-note{font-size:12px; color:var(--ink-soft); background:var(--paper-alt); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:24px;}
+  .config-note code{color:var(--blue-dim);}
+
+  #regionMap svg{width:100%; height:auto; display:block;}
+  #regionMap path.country{stroke:var(--paper); stroke-width:0.5; cursor:default; transition:opacity 0.15s, fill 0.15s;}
+  #regionMap path.country.mapped{cursor:pointer;}
+  #regionMap path.country.mapped:hover{opacity:0.75;}
+  #regionMap path.country.dimmed{opacity:0.55;}
+  .map-legend{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:14px;}
+  .map-legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); cursor:pointer; padding:2px 0;}
+  .map-legend-item:hover{color:var(--ink);}
+  .map-legend-item.active{color:var(--ink); font-weight:600;}
+  .map-legend-swatch{width:9px; height:9px; border-radius:2px; flex-shrink:0;}
+  .map-tooltip{
+    position:fixed; pointer-events:none; background:var(--ink); border:1px solid var(--ink);
+    border-radius:3px; padding:5px 9px; font-size:12px; color:var(--paper); z-index:50; display:none;
+  }
+  .signal{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .signal.pos{background:var(--positive);}
+  .signal.neu{background:var(--neutral-c);}
+  .signal.neg{background:var(--negative);}
+
+  @media (max-width:820px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .panel-grid{grid-template-columns:1fr;}
+    .tracker-section{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="masthead-row">
+      <div>
+        <div class="brand-name">Post-2030 tracking</div>
+        <div class="brand-sub">UN Foundation</div>
+      </div>
+      <div class="status" id="status">connecting to feed…</div>
+    </div>
+  </header>
+
+  <h1>Post-2030 discourse monitor</h1>
+  <p class="lede">This tracker documents global discussions on the Post-2030 agenda, tracking regional conversations on what will come after the Sustainable Development Goals. It is updated weekly. It also tracks discussions with tags including financing, methodology, and health, as well as sentiment over time.</p>
+
+  <div id="configNote" class="config-note" style="display:none;"></div>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="tracker-section">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span id="sidebarCount">0 dispatches</span>
+        <a class="reset-link" id="resetFilters">Reset</a>
+      </div>
+      <div class="filter-group" id="filterRegion">
+        <div class="filter-group-title">Region</div>
+      </div>
+      <div class="filter-group" id="filterSentiment">
+        <div class="filter-group-title">Sentiment</div>
+      </div>
+      <div class="filter-group" id="filterFraming">
+        <div class="filter-group-title">Framing</div>
+      </div>
+      <div class="filter-group" id="filterTags">
+        <div class="filter-group-title">Tags</div>
+      </div>
+      <div class="sidebar-list" id="sidebarList"></div>
+      <input type="text" id="search" placeholder="Search titles…" style="width:100%; margin-top:14px;">
+    </aside>
+    <div class="map-pane">
+      <p class="panel-title">Coverage by region</p>
+      <div class="map-wrap">
+        <div id="regionMap" style="width:100%;"></div>
+        <div class="map-controls">
+          <button type="button" id="mapZoomIn" title="Zoom in">+</button>
+          <button type="button" id="mapZoomOut" title="Zoom out">–</button>
+          <button type="button" id="mapZoomReset" title="Reset view">⤾</button>
+        </div>
+      </div>
+      <div class="map-legend" id="regionLegend"></div>
+    </div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <p class="panel-title">Sentiment split</p>
+      <div id="sentimentBars"></div>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Framing split</p>
+      <div id="framingBars"></div>
+    </div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <p class="panel-title">Framing by region</p>
+      <div class="dw-embed">
+        <iframe title="How post-2030 coverage is framed, by region" aria-label="Stacked column chart" id="datawrapper-chart-gTXgH" src="https://datawrapper.dwcdn.net/gTXgH/1/" scrolling="no" frameborder="0" style="width:0; min-width:100% !important; border:none;" height="447" data-external="1"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="panel">
+      <p class="panel-title">Tag co-occurrence</p>
+      <div class="dw-embed">
+        <iframe title="Tag Co-occurrence" aria-label="Table" id="datawrapper-chart-u5XEt" src="https://datawrapper.dwcdn.net/u5XEt/1/" scrolling="no" frameborder="0" style="width:0; min-width:100% !important; border:none;" height="581" data-external="1"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="map-tooltip" id="mapTooltip"></div>
+<script>
+const SHEET_ID = "1E3_bcIrrmATGbTFC_mQ0cAUtCgcxXXPPtJj_dR-iE00";
+const TAB_NAME = "Articles";
+
+const FIXED_COLS = ["date","publication","region","language","title","author","summary","link","sentiment","framing"];
+
+const MAP_BLUE_LIGHT = "#a9c6e0";
+const MAP_BLUE_DARK = "#1f5c96";
+const REGION_NAMES = ["Africa", "Asia-Pacific", "Europe", "North America", "Latin America & Caribbean", "Middle East"];
+
+const COUNTRY_REGION = {
+  "Algeria":"Africa","Angola":"Africa","Benin":"Africa","Botswana":"Africa","Burkina Faso":"Africa",
+  "Burundi":"Africa","Cameroon":"Africa","Central African Rep.":"Africa","Chad":"Africa","Congo":"Africa",
+  "Dem. Rep. Congo":"Africa","Djibouti":"Africa","Egypt":"Africa","Eq. Guinea":"Africa","Eritrea":"Africa",
+  "Ethiopia":"Africa","Gabon":"Africa","Gambia":"Africa","Ghana":"Africa","Guinea":"Africa",
+  "Guinea-Bissau":"Africa","Côte d'Ivoire":"Africa","Kenya":"Africa","Lesotho":"Africa","Liberia":"Africa",
+  "Libya":"Africa","Madagascar":"Africa","Malawi":"Africa","Mali":"Africa","Mauritania":"Africa",
+  "Morocco":"Africa","Mozambique":"Africa","Namibia":"Africa","Niger":"Africa","Nigeria":"Africa",
+  "Rwanda":"Africa","Senegal":"Africa","Sierra Leone":"Africa","Somalia":"Africa","Somaliland":"Africa",
+  "South Africa":"Africa","S. Sudan":"Africa","Sudan":"Africa","Tanzania":"Africa","Togo":"Africa",
+  "Tunisia":"Africa","Uganda":"Africa","W. Sahara":"Africa","Zambia":"Africa","Zimbabwe":"Africa","eSwatini":"Africa",
+  "Afghanistan":"Asia-Pacific","Australia":"Asia-Pacific","Azerbaijan":"Asia-Pacific","Bangladesh":"Asia-Pacific",
+  "Bhutan":"Asia-Pacific","Brunei":"Asia-Pacific","Cambodia":"Asia-Pacific","China":"Asia-Pacific","Fiji":"Asia-Pacific",
+  "India":"Asia-Pacific","Indonesia":"Asia-Pacific","Japan":"Asia-Pacific","Kazakhstan":"Asia-Pacific",
+  "Kyrgyzstan":"Asia-Pacific","Laos":"Asia-Pacific","Malaysia":"Asia-Pacific","Mongolia":"Asia-Pacific",
+  "Myanmar":"Asia-Pacific","Nepal":"Asia-Pacific","New Caledonia":"Asia-Pacific","New Zealand":"Asia-Pacific",
+  "North Korea":"Asia-Pacific","Pakistan":"Asia-Pacific","Papua New Guinea":"Asia-Pacific","Philippines":"Asia-Pacific",
+  "Solomon Is.":"Asia-Pacific","South Korea":"Asia-Pacific","Sri Lanka":"Asia-Pacific","Taiwan":"Asia-Pacific",
+  "Tajikistan":"Asia-Pacific","Thailand":"Asia-Pacific","Timor-Leste":"Asia-Pacific","Turkmenistan":"Asia-Pacific",
+  "Uzbekistan":"Asia-Pacific","Vanuatu":"Asia-Pacific","Vietnam":"Asia-Pacific","Georgia":"Asia-Pacific","Armenia":"Asia-Pacific",
+  "Albania":"Europe","Austria":"Europe","Belarus":"Europe","Belgium":"Europe","Bosnia and Herz.":"Europe",
+  "Bulgaria":"Europe","Croatia":"Europe","Czechia":"Europe","Denmark":"Europe","Estonia":"Europe","Finland":"Europe",
+  "France":"Europe","Germany":"Europe","Greece":"Europe","Hungary":"Europe","Iceland":"Europe","Ireland":"Europe",
+  "Italy":"Europe","Kosovo":"Europe","Latvia":"Europe","Lithuania":"Europe","Luxembourg":"Europe","Macedonia":"Europe",
+  "Moldova":"Europe","Montenegro":"Europe","Netherlands":"Europe","Norway":"Europe","Poland":"Europe","Portugal":"Europe",
+  "Romania":"Europe","Russia":"Europe","Serbia":"Europe","Slovakia":"Europe","Slovenia":"Europe","Spain":"Europe",
+  "Sweden":"Europe","Switzerland":"Europe","Ukraine":"Europe","United Kingdom":"Europe","Cyprus":"Europe","N. Cyprus":"Europe",
+  "Canada":"North America","United States of America":"North America","Greenland":"North America",
+  "Mexico":"Latin America & Caribbean","Guatemala":"Latin America & Caribbean","Belize":"Latin America & Caribbean",
+  "Honduras":"Latin America & Caribbean","El Salvador":"Latin America & Caribbean","Nicaragua":"Latin America & Caribbean",
+  "Costa Rica":"Latin America & Caribbean","Panama":"Latin America & Caribbean","Cuba":"Latin America & Caribbean",
+  "Jamaica":"Latin America & Caribbean","Haiti":"Latin America & Caribbean","Dominican Rep.":"Latin America & Caribbean",
+  "Trinidad and Tobago":"Latin America & Caribbean","Bahamas":"Latin America & Caribbean","Puerto Rico":"Latin America & Caribbean",
+  "Colombia":"Latin America & Caribbean","Venezuela":"Latin America & Caribbean","Guyana":"Latin America & Caribbean",
+  "Suriname":"Latin America & Caribbean","Ecuador":"Latin America & Caribbean","Peru":"Latin America & Caribbean",
+  "Brazil":"Latin America & Caribbean","Bolivia":"Latin America & Caribbean","Paraguay":"Latin America & Caribbean",
+  "Chile":"Latin America & Caribbean","Argentina":"Latin America & Caribbean","Uruguay":"Latin America & Caribbean",
+  "Falkland Is.":"Latin America & Caribbean",
+  "Iran":"Middle East","Iraq":"Middle East","Israel":"Middle East","Jordan":"Middle East","Kuwait":"Middle East",
+  "Lebanon":"Middle East","Oman":"Middle East","Palestine":"Middle East","Qatar":"Middle East","Saudi Arabia":"Middle East",
+  "Syria":"Middle East","Turkey":"Middle East","United Arab Emirates":"Middle East","Yemen":"Middle East"
+};
+
+let allRows = [];
+let tagNames = [];
+let tagColIndexes = [];
+let selectedRegions = new Set();
+let selectedSentiments = new Set();
+let selectedTags = new Set();
+let selectedFramings = new Set();
+
+function gvizUrl(sheetId, tabName){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
+}
+
+async function loadData(){
+  const statusEl = document.getElementById('status');
+  try{
+    const res = await fetch(gvizUrl(SHEET_ID, TAB_NAME));
+    if(!res.ok) throw new Error('fetch failed');
+    const text = await res.text();
+    const jsonStr = text.match(/setResponse\(([\s\S]*)\);?\s*$/)[1];
+    const data = JSON.parse(jsonStr);
+    const cols = data.table.cols.map(c => (c.label || '').trim());
+    tagNames = [];
+    tagColIndexes = [];
+    cols.slice(FIXED_COLS.length).forEach((label, i) => {
+      if(label){
+        tagNames.push(label);
+        tagColIndexes.push(FIXED_COLS.length + i);
+      }
+    });
+
+    allRows = data.table.rows.map(r => {
+      const c = r.c;
+      const get = i => (c[i] && (c[i].f !== undefined ? c[i].f : c[i].v)) ?? '';
+      const row = {
+        date: get(0), publication: get(1), region: get(2), language: get(3),
+        title: get(4), author: get(5), summary: get(6), link: get(7),
+        sentiment: get(8), framing: get(9),
+        tags: []
+      };
+      tagNames.forEach((t, idx) => {
+        const v = get(tagColIndexes[idx]);
+        if(v === 1 || v === '1' || v === true || v === 'TRUE') row.tags.push(t);
+      });
+      return row;
+    }).filter(r => r.title);
+
+    statusEl.innerHTML = `<span>${allRows.length}</span> dispatches · live from sheet`;
+    document.getElementById('configNote').style.display = 'none';
+    render();
+  }catch(err){
+    statusEl.textContent = 'feed unavailable';
+    document.getElementById('configNote').style.display = 'block';
+    document.getElementById('configNote').innerHTML =
+      `Couldn't load the sheet. Check that: (1) the sheet has a tab named <code>${TAB_NAME}</code> ` +
+      `matching the tracker template's column layout, and (2) sharing is set to "Anyone with the link – Viewer" ` +
+      `(File &gt; Share in Google Sheets). Once that's set, refresh this page.`;
+    document.getElementById('kpiRow').innerHTML = '';
+    document.getElementById('sidebarList').innerHTML = '<div class="empty">No data loaded yet.</div>';
+    renderRegionMap();
+    renderSidebarFilters();
+  }
+}
+
+function monthKey(dateStr){
+  const m = String(dateStr).match(/(\d{2})-(\d{2})-(\d{4})/);
+  if(!m) return null;
+  return `${m[3]}-${m[1]}`;
+}
+
+function render(){
+  renderKPIs();
+  renderSentimentBars();
+  renderFramingBars();
+  renderRegionMap();
+  renderSidebarFilters();
+  renderSidebarList();
+}
+
+function renderKPIs(){
+  const regions = new Set(allRows.map(r => r.region).filter(Boolean));
+  const sentCounts = {Positive:0, Neutral:0, Negative:0};
+  allRows.forEach(r => { if(sentCounts[r.sentiment] !== undefined) sentCounts[r.sentiment]++; });
+  const topSentiment = Object.entries(sentCounts).sort((a,b)=>b[1]-a[1])[0];
+  const tagCounts = {};
+  allRows.forEach(r => r.tags.forEach(t => tagCounts[t] = (tagCounts[t]||0)+1));
+  const topTag = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  const kpis = [
+    ["Total dispatches", allRows.length],
+    ["Regions covered", regions.size],
+    ["Leading tone", topSentiment ? topSentiment[0] : "—"],
+    ["Most common tag", topTag ? topTag[0] : "—"],
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(([label,val]) =>
+    `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value">${val}</div></div>`
+  ).join('');
+}
+
+function barList(counts, containerId, colorVar){
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  const el = document.getElementById(containerId);
+  if(entries.length === 0){ el.innerHTML = '<div class="empty">No data yet.</div>'; return; }
+  el.innerHTML = entries.map(([label,count]) => `
+    <div class="bar-row">
+      <div class="bar-label" title="${label}">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(0)}%; background:${colorVar||'var(--blue)'};"></div></div>
+      <div class="bar-count">${count}</div>
+    </div>`).join('');
+}
+
+function renderSentimentBars(){
+  const counts = {Positive:0, Neutral:0, Negative:0};
+  allRows.forEach(r => { if(counts[r.sentiment] !== undefined) counts[r.sentiment]++; });
+  const colors = {Positive:'#2f7d5c', Neutral:'#8b8163', Negative:'#b23b2e'};
+  const el = document.getElementById('sentimentBars');
+  const max = Math.max(1, ...Object.values(counts));
+  el.innerHTML = Object.entries(counts).map(([label,count]) => `
+    <div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(0)}%; background:${colors[label]};"></div></div>
+      <div class="bar-count">${count}</div>
+    </div>`).join('');
+}
+
+function renderFramingBars(){
+  const counts = {Diagnosis:0, Prescription:0, 'Process Update':0};
+  allRows.forEach(r => { if(counts[r.framing] !== undefined) counts[r.framing]++; });
+  barList(counts, 'framingBars');
+}
+
+function renderRegionBars(){
+  // superseded by renderRegionMap(), kept as no-op guard for older calls
+}
+
+let mapSelection = null;
+let worldFeatures = null;
+
+function drawMap(){
+  const container = document.getElementById('regionMap');
+  container.innerHTML = '';
+  const width = 700, height = 420;
+  const svg = d3.select('#regionMap').append('svg').attr('viewBox', `0 0 ${width} ${height}`);
+  const g = svg.append('g');
+  const projection = d3.geoNaturalEarth1().fitSize([width, height], {type:"Sphere"});
+  const path = d3.geoPath(projection);
+  const tooltip = document.getElementById('mapTooltip');
+
+  g.selectAll('path.country')
+    .data(worldFeatures)
+    .join('path')
+    .attr('class', d => 'country' + (COUNTRY_REGION[d.properties.name] ? ' mapped' : ''))
+    .attr('d', path)
+    .attr('fill', d => {
+      const region = COUNTRY_REGION[d.properties.name];
+      return region ? MAP_BLUE_LIGHT : 'var(--paper-alt)';
+    })
+    .on('mousemove', (event, d) => {
+      const region = COUNTRY_REGION[d.properties.name];
+      if(!region) return;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.clientX + 12) + 'px';
+      tooltip.style.top = (event.clientY + 12) + 'px';
+      tooltip.textContent = `${d.properties.name} — ${region}`;
+    })
+    .on('mouseleave', () => { tooltip.style.display = 'none'; })
+    .on('click', (event, d) => {
+      const region = COUNTRY_REGION[d.properties.name];
+      if(!region) return;
+      toggleRegion(region);
+    });
+
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .translateExtent([[0,0],[width,height]])
+    .on('zoom', (event) => { g.attr('transform', event.transform); });
+
+  svg.call(zoom);
+  svg.on('dblclick.zoom', null);
+
+  window._mapZoom = zoom;
+  window._mapSvg = svg;
+
+  updateMapHighlight();
+}
+
+function zoomMapBy(factor){
+  if(!window._mapSvg || !window._mapZoom) return;
+  window._mapSvg.transition().duration(200).call(window._mapZoom.scaleBy, factor);
+}
+
+function resetMapZoom(){
+  if(!window._mapSvg || !window._mapZoom) return;
+  window._mapSvg.transition().duration(200).call(window._mapZoom.transform, d3.zoomIdentity);
+}
+
+function toggleRegion(region){
+  if(selectedRegions.has(region)) selectedRegions.delete(region);
+  else selectedRegions.add(region);
+  syncRegionCheckboxes();
+  updateMapHighlight();
+  renderMapLegend();
+  renderSidebarList();
+}
+
+function syncRegionCheckboxes(){
+  document.querySelectorAll('#filterRegion input[type=checkbox]').forEach(cb => {
+    cb.checked = selectedRegions.has(cb.value);
+  });
+}
+
+function updateMapHighlight(){
+  d3.selectAll('#regionMap path.country').attr('fill', function(d){
+    const region = COUNTRY_REGION[d.properties.name];
+    if(!region) return 'var(--paper-alt)';
+    if(selectedRegions.size === 0) return MAP_BLUE_LIGHT;
+    return selectedRegions.has(region) ? MAP_BLUE_DARK : MAP_BLUE_LIGHT;
+  }).classed('dimmed', function(d){
+    if(selectedRegions.size === 0) return false;
+    const region = COUNTRY_REGION[d.properties.name];
+    return !selectedRegions.has(region);
+  });
+}
+
+function renderMapLegend(){
+  const counts = {};
+  allRows.forEach(r => { if(r.region) counts[r.region] = (counts[r.region]||0)+1; });
+  const el = document.getElementById('regionLegend');
+  const swatch = region => selectedRegions.has(region) ? MAP_BLUE_DARK : MAP_BLUE_LIGHT;
+  el.innerHTML = REGION_NAMES.map(region => {
+    const active = selectedRegions.has(region) ? ' active' : '';
+    return `<span class="map-legend-item${active}" data-region="${region}">
+      <span class="map-legend-swatch" style="background:${swatch(region)};"></span>
+      ${region} (${counts[region] || 0})
+    </span>`;
+  }).join('') + `<span class="map-legend-item${selectedRegions.has('Global / Multilateral') ? ' active' : ''}" data-region="Global / Multilateral">
+      <span class="map-legend-swatch" style="background:var(--muted-dim);"></span>
+      Global / Multilateral (${counts['Global / Multilateral'] || 0})
+    </span>`;
+
+  el.querySelectorAll('.map-legend-item').forEach(item => {
+    item.onclick = () => toggleRegion(item.dataset.region);
+  });
+}
+
+async function renderRegionMap(){
+  try{
+    if(!worldFeatures){
+      const topo = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+      worldFeatures = topojson.feature(topo, topo.objects.countries).features;
+    }
+    drawMap();
+    renderMapLegend();
+  }catch(err){
+    document.getElementById('regionMap').innerHTML = '<div class="empty">Map failed to load — check your connection and refresh.</div>';
+  }
+}
+
+function checkboxGroup(containerId, options, selectedSet, onToggle){
+  const el = document.getElementById(containerId);
+  const title = el.querySelector('.filter-group-title');
+  el.innerHTML = '';
+  if(title) el.appendChild(title);
+  options.forEach(([label, value, count]) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'filter-check';
+    wrap.innerHTML = `<input type="checkbox" value="${value}"> <span class="fc-label">${label}</span> <span class="fc-count">${count}</span>`;
+    const input = wrap.querySelector('input');
+    input.checked = selectedSet.has(value);
+    input.onchange = () => {
+      if(input.checked) selectedSet.add(value);
+      else selectedSet.delete(value);
+      onToggle();
+    };
+    el.appendChild(wrap);
+  });
+}
+
+function renderSidebarFilters(){
+  const regionCounts = {};
+  allRows.forEach(r => { if(r.region) regionCounts[r.region] = (regionCounts[r.region]||0)+1; });
+  const regionOptions = [...REGION_NAMES, 'Global / Multilateral'].map(r => [r, r, regionCounts[r]||0]);
+  checkboxGroup('filterRegion', regionOptions, selectedRegions, () => {
+    updateMapHighlight();
+    renderMapLegend();
+    renderSidebarList();
+  });
+
+  const sentCounts = {Positive:0, Neutral:0, Negative:0};
+  allRows.forEach(r => { if(sentCounts[r.sentiment] !== undefined) sentCounts[r.sentiment]++; });
+  const sentimentOptions = ['Positive','Neutral','Negative'].map(s => [s, s, sentCounts[s]||0]);
+  checkboxGroup('filterSentiment', sentimentOptions, selectedSentiments, renderSidebarList);
+
+  const framingCounts = {};
+  allRows.forEach(r => { if(r.framing) framingCounts[r.framing] = (framingCounts[r.framing]||0)+1; });
+  const framingOptions = ['Diagnosis','Prescription','Process Update'].map(f => [f, f, framingCounts[f]||0]);
+  checkboxGroup('filterFraming', framingOptions, selectedFramings, renderSidebarList);
+
+  const tagCounts = {};
+  allRows.forEach(r => r.tags.forEach(t => tagCounts[t] = (tagCounts[t]||0)+1));
+  const tagOptions = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).map(([t,c]) => [t, t, c]);
+  checkboxGroup('filterTags', tagOptions, selectedTags, renderSidebarList);
+
+  document.getElementById('search').oninput = renderSidebarList;
+  document.getElementById('resetFilters').onclick = () => {
+    selectedRegions.clear(); selectedSentiments.clear(); selectedTags.clear(); selectedFramings.clear();
+    document.getElementById('search').value = '';
+    renderSidebarFilters();
+    updateMapHighlight();
+    renderMapLegend();
+    renderSidebarList();
+  };
+}
+
+function renderSidebarList(){
+  const search = document.getElementById('search').value.toLowerCase();
+  const filtered = allRows.filter(r => {
+    if(selectedRegions.size > 0 && !selectedRegions.has(r.region)) return false;
+    if(selectedSentiments.size > 0 && !selectedSentiments.has(r.sentiment)) return false;
+    if(selectedFramings.size > 0 && !selectedFramings.has(r.framing)) return false;
+    if(selectedTags.size > 0 && ![...selectedTags].some(t => r.tags.includes(t))) return false;
+    if(search && !r.title.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('sidebarCount').textContent = `${filtered.length} dispatch${filtered.length === 1 ? '' : 'es'}`;
+
+  const listEl = document.getElementById('sidebarList');
+  if(filtered.length === 0){ listEl.innerHTML = '<div class="empty">No dispatches match the current filters.</div>'; return; }
+
+  const signalClass = s => s === 'Positive' ? 'pos' : (s === 'Negative' ? 'neg' : 'neu');
+  const grouped = {};
+  filtered.forEach(r => {
+    const key = r.region || 'Unspecified';
+    if(!grouped[key]) grouped[key] = [];
+    grouped[key].push(r);
+  });
+
+  const orderedRegions = Object.keys(grouped).sort();
+  listEl.innerHTML = orderedRegions.map(region => `
+    <div class="sidebar-region-group">
+      <div class="sidebar-region-title">${region} (${grouped[region].length})</div>
+      ${grouped[region].map(r => `
+        <div class="sidebar-title-item">
+          <span class="signal ${signalClass(r.sentiment)}" title="${r.sentiment}"></span>
+          ${r.link ? `<a href="${r.link}" target="_blank" rel="noopener" class="title-link">${r.title} <span class="link-arrow">↗</span></a>` : `<span>${r.title}</span>`}
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+document.getElementById('mapZoomIn').onclick = () => zoomMapBy(1.5);
+document.getElementById('mapZoomOut').onclick = () => zoomMapBy(1/1.5);
+document.getElementById('mapZoomReset').onclick = () => resetMapZoom();
+
+renderRegionMap();
+loadData();
+</script>
+<script type="text/javascript">
+!function(){"use strict";window.addEventListener("message",(function(a){if(void 0!==a.data["datawrapper-height"]){var e=document.querySelectorAll("iframe");for(var t in a.data["datawrapper-height"])for(var r=0;r<e.length;r++){if(e[r].contentWindow===a.source)e[r].style.height=a.data["datawrapper-height"][t]+"px"}}}))}();
+</script>
+</body>
+</html>
